@@ -1,0 +1,843 @@
+openapi: 3.0.0
+info:
+  title: SkillSwap API Documentation
+  description: API documentation for the SkillSwap platform - A skill exchange marketplace
+  version: 1.0.0
+  contact:
+    email: support@skillswap.com
+
+servers:
+  - url: http://localhost:5001
+    description: Development server
+  - url: https://api.skillswap.com
+    description: Production server
+
+tags:
+  - name: Skills
+    description: Skill management endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Matches
+    description: Skill matching endpoints
+  - name: Reviews
+    description: Review management endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Error message details
+
+    Skill:
+      type: object
+      required:
+        - name
+        - description
+        - category
+        - createdBy
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          description: The auto-generated MongoDB ID
+        name:
+          type: string
+          description: Name of the skill
+          example: "JavaScript Programming"
+        description:
+          type: string
+          description: Detailed description of the skill
+          example: "Modern JavaScript programming including ES6+ features"
+        category:
+          type: string
+          description: Category the skill belongs to
+          example: "Programming"
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Advanced]
+          default: Beginner
+          description: Difficulty level of the skill
+        createdBy:
+          type: string
+          format: ObjectId
+          description: Reference to the user who created the skill
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the skill was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the skill was last updated
+
+    User:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          description: The auto-generated MongoDB ID
+        name:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          description: User's hashed password
+        location:
+          type: string
+          description: User's location
+          example: "New York, USA"
+        skillsOffered:
+          type: array
+          items:
+            type: string
+            format: ObjectId
+          description: Array of skills the user can teach
+        skillsWanted:
+          type: array
+          items:
+            type: string
+            format: ObjectId
+          description: Array of skills the user wants to learn
+        skills:
+          type: array
+          items:
+            type: string
+          description: Array of general skills
+        availability:
+          type: string
+          description: User's availability for skill exchange
+          example: "Weekends, 9 AM - 5 PM"
+        bio:
+          type: string
+          maxLength: 500
+          description: User's biography
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the user account was created
+
+    Match:
+      type: object
+      required:
+        - user1
+        - user2
+        - status
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          description: The auto-generated MongoDB ID
+        user1:
+          type: string
+          format: ObjectId
+          description: Reference to the first user in the match
+        user2:
+          type: string
+          format: ObjectId
+          description: Reference to the second user in the match
+        status:
+          type: string
+          enum: [pending, accepted, rejected, completed]
+          description: Current status of the match
+        skillOffered:
+          type: string
+          format: ObjectId
+          description: Skill being offered in the exchange
+        skillWanted:
+          type: string
+          format: ObjectId
+          description: Skill being requested in the exchange
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the match was created
+
+    Review:
+      type: object
+      required:
+        - reviewer
+        - reviewee
+        - rating
+        - comment
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          description: The auto-generated MongoDB ID
+        reviewer:
+          type: string
+          format: ObjectId
+          description: Reference to the user giving the review
+        reviewee:
+          type: string
+          format: ObjectId
+          description: Reference to the user being reviewed
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+          description: Rating score (1-5)
+        comment:
+          type: string
+          description: Review comment
+          example: "Great teacher, very patient and knowledgeable!"
+        skill:
+          type: string
+          format: ObjectId
+          description: Reference to the skill being reviewed
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the review was created
+
+    Message:
+      type: object
+      required:
+        - sender
+        - recipient
+        - content
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          description: The auto-generated MongoDB ID
+        sender:
+          type: string
+          format: ObjectId
+          description: Reference to the user sending the message
+        recipient:
+          type: string
+          format: ObjectId
+          description: Reference to the user receiving the message
+        content:
+          type: string
+          description: The message content
+          example: "Hello, I'm interested in learning from you!"
+        isRead:
+          type: boolean
+          default: false
+          description: Indicates if the message has been read
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the message was sent
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the message was last updated
+
+paths:
+  /api/skills:
+    get:
+      tags:
+        - Skills
+      summary: Get all skills
+      description: Retrieve a list of all available skills
+      responses:
+        '200':
+          description: Successfully retrieved skills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Skill'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Skills
+      summary: Create a new skill
+      description: Add a new skill to the platform
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+                - category
+              properties:
+                name:
+                  type: string
+                  example: "Python Programming"
+                description:
+                  type: string
+                  example: "Python programming including modern frameworks"
+                category:
+                  type: string
+                  example: "Programming"
+      responses:
+        '201':
+          description: Skill created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Skill'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/skills/{id}:
+    get:
+      tags:
+        - Skills
+      summary: Get skill by ID
+      description: Retrieve detailed information about a specific skill
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Skill ID
+          example: "60d5ecb74e90d92c7831b3a1"
+      responses:
+        '200':
+          description: Successfully retrieved skill
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Skill'
+        '404':
+          description: Skill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Skills
+      summary: Update a skill
+      description: Update an existing skill's information
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Skill ID
+          example: "60d5ecb74e90d92c7831b3a1"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Skill'
+      responses:
+        '200':
+          description: Skill updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Skill'
+        '404':
+          description: Skill not found
+        '401':
+          description: Unauthorized
+
+    delete:
+      tags:
+        - Skills
+      summary: Delete a skill
+      description: Remove a skill from the platform
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Skill ID
+          example: "60d5ecb74e90d92c7831b3a1"
+      responses:
+        '200':
+          description: Skill deleted successfully
+        '404':
+          description: Skill not found
+        '401':
+          description: Unauthorized
+
+  /api/skills/trending:
+    get:
+      tags:
+        - Skills
+      summary: Get trending skills
+      description: Retrieve a list of currently trending skills
+      responses:
+        '200':
+          description: Successfully retrieved trending skills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Skill'
+
+  /api/skills/search:
+    get:
+      tags:
+        - Skills
+      summary: Search skills
+      description: Search for skills based on query parameters
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+          description: Search query string
+          example: "programming"
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Skill'
+
+  /api/users:
+    post:
+      tags:
+        - Users
+      summary: Register a new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "securePassword123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/login:
+    post:
+      tags:
+        - Users
+      summary: User login
+      description: Authenticate user and get token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "securePassword123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      description: Get the current user's profile information
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      description: Update the current user's profile information
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                skills:
+                  type: array
+                  items:
+                    type: string
+                  example: ["60d5ecb74e90d92c7831b3a1", "60d5ecb74e90d92c7831b3a2"]
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/matches:
+    post:
+      tags:
+        - Matches
+      summary: Create a new match request
+      description: Request a skill exchange match with another user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - receiver
+                - skills
+              properties:
+                receiver:
+                  type: string
+                  description: ID of the user to match with
+                  example: "60d5ecb74e90d92c7831b3a1"
+                skills:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of skill IDs involved in the match
+                  example: ["60d5ecb74e90d92c7831b3a1", "60d5ecb74e90d92c7831b3a2"]
+      responses:
+        '201':
+          description: Match request created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Match'
+
+    get:
+      tags:
+        - Matches
+      summary: Get user's matches
+      description: Get all matches for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved matches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+
+  /api/matches/{id}:
+    put:
+      tags:
+        - Matches
+      summary: Update match status
+      description: Accept or reject a match request
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Match ID
+          example: "60d5ecb74e90d92c7831b3a1"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [accepted, rejected]
+                  example: "accepted"
+      responses:
+        '200':
+          description: Match status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Match'
+
+  /api/reviews:
+    post:
+      tags:
+        - Reviews
+      summary: Create a new review
+      description: Submit a review for a completed skill exchange
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - matchId
+                - rating
+                - skillRated
+              properties:
+                matchId:
+                  type: string
+                  description: ID of the completed match
+                  example: "60d5ecb74e90d92c7831b3a1"
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 5
+                  description: Rating from 1 to 5
+                  example: 5
+                comment:
+                  type: string
+                  description: Optional review comment
+                  example: "Great experience learning Python!"
+                skillRated:
+                  type: string
+                  description: ID of the skill being rated
+                  example: "60d5ecb74e90d92c7831b3a1"
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Review'
+
+  /api/reviews/user/{userId}:
+    get:
+      tags:
+        - Reviews
+      summary: Get user reviews
+      description: Get all reviews for a specific user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID
+          example: "60d5ecb74e90d92c7831b3a1"
+      responses:
+        '200':
+          description: Successfully retrieved reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review' 
